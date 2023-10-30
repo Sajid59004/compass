@@ -1,5 +1,6 @@
 package com.example.compass
 
+import android.content.ContentValues
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -23,11 +24,14 @@ class MainActivity : AppCompatActivity() {
         list = findViewById(R.id.list)
         button = findViewById(R.id.button)
 
+        // Load tasks from the database
+        val databaseHelper = DatabaseHelper(applicationContext)
+        items = databaseHelper.getAllTasks() as ArrayList<TaskItem>
+
         button.setOnClickListener {
             addition(it)
         }
 
-        items = ArrayList()
         itemsAdapter = TaskAdapter(this, items)
         list.adapter = itemsAdapter
 
@@ -40,6 +44,7 @@ class MainActivity : AppCompatActivity() {
             markCompleted(position)
         }
     }
+
 
     private fun remove(position: Int) {
         val context: Context = applicationContext
@@ -54,11 +59,27 @@ class MainActivity : AppCompatActivity() {
 
         if (itemText.isNotEmpty()) {
             val taskItem = TaskItem(itemText)
+
+            // Initialize the database helper and get a writable database
+            val databaseHelper = DatabaseHelper(applicationContext)
+            val db = databaseHelper.writableDatabase
+
+// Create ContentValues to insert the task into the database
+            val contentValues = ContentValues().apply {
+                put(DatabaseHelper.COLUMN_TEXT, taskItem.text)
+                put(DatabaseHelper.COLUMN_IS_COMPLETED, if (taskItem.isCompleted) 1 else 0)
+                put(DatabaseHelper.COLUMN_CREATED_TIME, taskItem.createdTime)
+                put(DatabaseHelper.COLUMN_COMPLETED_TIME, taskItem.completedTime)
+            }
+
+// Insert the task into the database
+            val newRowId = db.insert(DatabaseHelper.TABLE_NAME, null, contentValues)
+
+// Add the task to your ArrayList and update the adapter
             items.add(taskItem)
             itemsAdapter.notifyDataSetChanged()
+
             input.text.clear()
-        } else {
-            Toast.makeText(applicationContext, "Please Enter Text...", Toast.LENGTH_LONG).show()
         }
     }
 
