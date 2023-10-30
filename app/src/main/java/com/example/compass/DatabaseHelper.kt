@@ -18,6 +18,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         onCreate(db)
     }
 
+
+
     fun getAllTasks(): List<MainActivity.TaskItem> {
         val taskList = mutableListOf<MainActivity.TaskItem>()
         val db = this.readableDatabase
@@ -46,6 +48,30 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         cursor.close()
         return taskList
     }
+
+    fun removeTask(id: Long): Int {
+        val db = writableDatabase
+        val whereClause = "$COLUMN_ID = ?"
+        val whereArgs = arrayOf(id.toString())
+
+        val rowsDeleted = db.delete(TABLE_NAME, whereClause, whereArgs)
+        db.close()
+        return rowsDeleted
+    }
+
+    fun insertTask(taskItem: MainActivity.TaskItem): Long {
+        val db = writableDatabase
+        val contentValues = ContentValues().apply {
+            put(COLUMN_TEXT, taskItem.text)
+            put(COLUMN_IS_COMPLETED, if (taskItem.isCompleted) 1 else 0)
+            put(COLUMN_CREATED_TIME, taskItem.createdTime)
+            put(COLUMN_COMPLETED_TIME, taskItem.completedTime)
+        }
+        val newRowId = db.insert(TABLE_NAME, null, contentValues)
+        db.close()
+        return newRowId
+    }
+
 
     companion object {
         const val DATABASE_VERSION = 1

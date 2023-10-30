@@ -23,17 +23,18 @@ class MainActivity : AppCompatActivity() {
 
         list = findViewById(R.id.list)
         button = findViewById(R.id.button)
+        items = ArrayList()
 
         // Load tasks from the database
         val databaseHelper = DatabaseHelper(applicationContext)
-        items = databaseHelper.getAllTasks() as ArrayList<TaskItem>
-
-        button.setOnClickListener {
-            addition(it)
-        }
+        items.addAll(databaseHelper.getAllTasks())
 
         itemsAdapter = TaskAdapter(this, items)
         list.adapter = itemsAdapter
+
+        button.setOnClickListener {
+            addition()
+        }
 
         list.setOnItemLongClickListener { _, _, position, _ ->
             remove(position)
@@ -45,47 +46,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     private fun remove(position: Int) {
+        val taskItem = items[position]
         val context: Context = applicationContext
-        Toast.makeText(context, "Item Removed", Toast.LENGTH_LONG).show()
+
+        // Remove task from the database
+        val databaseHelper = DatabaseHelper(applicationContext)
+        databaseHelper.removeTask(taskItem.id)
+
         items.removeAt(position)
         itemsAdapter.notifyDataSetChanged()
+        Toast.makeText(context, "Task Removed", Toast.LENGTH_LONG).show()
     }
 
-    private fun addition(view: View) {
+    private fun addition() {
         val input = findViewById<EditText>(R.id.edit_text)
         val itemText = input.text.toString()
 
         if (itemText.isNotEmpty()) {
             val taskItem = TaskItem(itemText)
-
-            // Initialize the database helper and get a writable database
             val databaseHelper = DatabaseHelper(applicationContext)
-            val db = databaseHelper.writableDatabase
 
-// Create ContentValues to insert the task into the database
-            val contentValues = ContentValues().apply {
-                put(DatabaseHelper.COLUMN_TEXT, taskItem.text)
-                put(DatabaseHelper.COLUMN_IS_COMPLETED, if (taskItem.isCompleted) 1 else 0)
-                put(DatabaseHelper.COLUMN_CREATED_TIME, taskItem.createdTime)
-                put(DatabaseHelper.COLUMN_COMPLETED_TIME, taskItem.completedTime)
-            }
+            // Insert the task into the database
+            val newRowId = databaseHelper.insertTask(taskItem)
 
-// Insert the task into the database
-            val newRowId = db.insert(DatabaseHelper.TABLE_NAME, null, contentValues)
-
-// Add the task to your ArrayList and update the adapter
+            taskItem.id = newRowId
             items.add(taskItem)
             itemsAdapter.notifyDataSetChanged()
 
             input.text.clear()
+        } else {
+            Toast.makeText(applicationContext, "Please enter a task", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun markCompleted(position: Int) {
-        val context: Context = applicationContext
         val taskItem = items[position]
+        val context: Context = applicationContext
 
         if (taskItem.isCompleted) {
             Toast.makeText(context, "Task already marked as completed.", Toast.LENGTH_LONG).show()
@@ -111,7 +108,8 @@ class MainActivity : AppCompatActivity() {
         val text: String,
         var isCompleted: Boolean = false,
         var createdTime: String = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
-        var completedTime: String = ""
+        var completedTime: String = "",
+        var id: Long = -1
     )
 
     class TaskAdapter(context: Context, private val tasks: ArrayList<TaskItem>) : BaseAdapter() {
